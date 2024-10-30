@@ -1,0 +1,6 @@
+# vs
+/.vs/
+
+# production
+*/bin/
+*/obj/
