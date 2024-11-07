@@ -1,8 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using IWshRuntimeLibrary;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
 using File = System.IO.File;
 
 namespace DST_Toolkit
@@ -26,6 +24,7 @@ namespace DST_Toolkit
             txt_klei_server_token.Text = Properties.Resources.Default.klei_server_token;
             this.klei_server_token = Properties.Resources.Default.klei_server_token;
             bat_path = Properties.Resources.Default.bat_path;
+            gr_server_info.Enabled = false;
         }
 
         private void btn_steamapps_Click(object sender, EventArgs e)
@@ -73,7 +72,7 @@ namespace DST_Toolkit
                         Properties.Resources.Default.cluster = cluster_path;
                         Properties.Resources.Default.Save();
                         this.strip_status_content.Text = "Next step...";
-
+                        gr_server_info.Enabled = true;
                         this.txt_server_name.Text = Common.IniRead(cluster_init, "NETWORK", "cluster_name");
                         this.txt_description.Text = Common.IniRead(cluster_init, "NETWORK", "cluster_description");
                         this.txt_password.Text = Common.IniRead(cluster_init, "NETWORK", "cluster_password");
@@ -90,6 +89,7 @@ namespace DST_Toolkit
 
         private void txt_klei_server_token_TextChanged(object sender, EventArgs e)
         {
+            klei_server_token = txt_klei_server_token.Text;
             Properties.Resources.Default.klei_server_token = txt_klei_server_token.Text;
             Properties.Resources.Default.Save();
         }
@@ -101,6 +101,8 @@ namespace DST_Toolkit
                 Properties.Resources.Default.server_name = txt_server_name.Text;
                 Properties.Resources.Default.Save();
             }
+
+            btn_save.BackColor = Color.LightCoral;
         }
 
         private void txt_description_TextChanged(object sender, EventArgs e)
@@ -110,6 +112,8 @@ namespace DST_Toolkit
                 Properties.Resources.Default.description = txt_description.Text;
                 Properties.Resources.Default.Save();
             }
+
+            btn_save.BackColor = Color.LightCoral;
         }
 
         private void txt_password_TextChanged(object sender, EventArgs e)
@@ -119,6 +123,8 @@ namespace DST_Toolkit
                 Properties.Resources.Default.password = txt_password.Text;
                 Properties.Resources.Default.Save();
             }
+
+            btn_save.BackColor = Color.LightCoral;
         }
 
         private void txt_max_player_TextChanged(object sender, EventArgs e)
@@ -128,9 +134,16 @@ namespace DST_Toolkit
                 Properties.Resources.Default.max_player = int.Parse(txt_max_player.Text);
                 Properties.Resources.Default.Save();
             }
+
+            btn_save.BackColor = Color.LightCoral;
         }
 
         private void btn_save_Click(object sender, EventArgs e)
+        {
+            save_server_info();
+        }
+
+        private void save_server_info()
         {
             string cluster_init = Path.Combine(this.cluster_path, "cluster.ini");
 
@@ -138,12 +151,13 @@ namespace DST_Toolkit
             Common.IniWrite(cluster_init, "NETWORK", "cluster_description", " " + this.txt_description.Text);
             Common.IniWrite(cluster_init, "NETWORK", "cluster_password", " " + this.txt_password.Text);
             Common.IniWrite(cluster_init, "GAMEPLAY", "max_players", " " + this.txt_max_player.Text);
-
+            btn_save.BackColor = Control.DefaultBackColor;
             this.strip_status_content.Text = "Saved!!!";
         }
 
         private void btn_create_server_Click(object sender, EventArgs e)
         {
+            save_server_info();
             if (!string.IsNullOrEmpty(steamapps_path) && !string.IsNullOrEmpty(cluster_path) && !string.IsNullOrEmpty(klei_server_token))
             {
                 this.strip_status_content.Text = "Save token";
@@ -309,12 +323,22 @@ namespace DST_Toolkit
 
         private void CreateShortcut(string name)
         {
-            object sh_desktop = "Desktop";
-            WshShell shell = (WshShell)Activator.CreateInstance(Marshal.GetTypeFromCLSID(new Guid("72C24DD5-D70A-438B-8A42-98424B88AFB8")));
-            string shortcut_address = string.Concat((string)((dynamic)shell.SpecialFolders.Item(ref sh_desktop)), "\\", name, ".lnk");
-            IWshShortcut wsh_shortcut = (IWshShortcut)((dynamic)shell.CreateShortcut(shortcut_address));
-            wsh_shortcut.TargetPath = string.Concat(this.steamapps_path, "\\common\\Don't Starve Together Dedicated Server\\bin64\\\\", name, ".bat");
-            wsh_shortcut.Save();
+            string desktop_path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string shortcutAddress = System.IO.Path.Combine(desktop_path, $"{name}.lnk");
+
+            Type shellType = Type.GetTypeFromCLSID(new Guid("72C24DD5-D70A-438B-8A42-98424B88AFB8"));
+            dynamic shell = Activator.CreateInstance(shellType);
+
+            try
+            {
+                dynamic shortcut = shell.CreateShortcut(shortcutAddress);
+                shortcut.TargetPath = System.IO.Path.Combine(this.steamapps_path, "common", "Don't Starve Together Dedicated Server", "bin64", $"{name}.bat");
+                shortcut.Save();
+            }
+            finally
+            {
+                if (shell != null) Marshal.ReleaseComObject(shell);
+            }
         }
 
         public string FindTextBetween(string text, string left, string right)
